@@ -13,10 +13,19 @@
     "html_handling": "none"
   },
   "vars": {
-    "APP_ORIGIN": "https://reaction-diary.REPLACE_WITH_YOUR_SUBDOMAIN.workers.dev"
+    "APP_ORIGIN": "https://reaction-diary.mingxuan3293.workers.dev"
   },
-  "d1_databases": [],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "reaction-diary-data",
+      "database_id": "f6ab69f7-19a1-4820-8e9a-833295d34bbf",
+      "migrations_dir": "drizzle"
+    }
+  ],
   "observability": {
     "enabled": true
-  }
+  },
+  "account_id": "deb5fe4699e66f8f6766479333f7dd9b"
 }
+
