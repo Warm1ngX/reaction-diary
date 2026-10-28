@@ -13,7 +13,7 @@
     "html_handling": "none"
   },
   "vars": {
-    "APP_ORIGIN": "https://reaction-diary.mingxuan3293.workers.dev"
+    "APP_ORIGIN": "https://reaction-diary.warm1ng.workers.dev"
   },
   "d1_databases": [
     {
@@ -28,4 +28,3 @@
   },
   "account_id": "deb5fe4699e66f8f6766479333f7dd9b"
 }
-
