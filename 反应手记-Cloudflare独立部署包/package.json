@@ -1,0 +1,31 @@
+{
+  "name": "reaction-diary-cloudflare",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "prepare": "node scripts/prepare-journal.mjs && node scripts/prepare-static.mjs",
+    "predeploy": "npm run prepare",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "login": "wrangler login",
+    "db:create": "node scripts/create-db.mjs",
+    "db:apply": "wrangler d1 migrations apply DB --remote",
+    "set-secret": "node scripts/set-secret.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "configure": "node scripts/configure.mjs"
+  },
+  "dependencies": {
+    "better-auth": "1.7.14",
+    "drizzle-orm": "0.45.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260515.1",
+    "@types/node": "22.19.19",
+    "typescript": "5.9.3",
+    "wrangler": "4.92.0"
+  }
+}

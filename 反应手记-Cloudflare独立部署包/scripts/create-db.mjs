@@ -1,0 +1,3 @@
+import {spawnSync} from 'node:child_process';import fs from 'node:fs';
+const r=spawnSync(process.execPath,['node_modules/wrangler/bin/wrangler.js','d1','create','reaction-diary-data','--binding','DB','--update-config'],{stdio:'inherit'});if(r.status!==0)process.exit(r.status??1);
+const config=JSON.parse(fs.readFileSync('wrangler.json','utf8'));const binding=config.d1_databases.find(d=>d.binding==='DB');if(!binding?.database_id)throw Error('D1 created but binding absent; add the returned ID to wrangler.json before proceeding.');binding.migrations_dir='drizzle';fs.writeFileSync('wrangler.json',JSON.stringify(config,null,2)+'\n');console.log('DB binding and migrations directory configured.');

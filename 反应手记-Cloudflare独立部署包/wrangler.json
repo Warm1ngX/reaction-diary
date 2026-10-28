@@ -1,0 +1,22 @@
+{
+  "name": "reaction-diary",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "none"
+  },
+  "vars": {
+    "APP_ORIGIN": "https://reaction-diary.REPLACE_WITH_YOUR_SUBDOMAIN.workers.dev"
+  },
+  "d1_databases": [],
+  "observability": {
+    "enabled": true
+  }
+}

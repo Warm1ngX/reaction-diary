@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';import {ReactionSleep as S} from '../lib/sleep-insights.mjs';import {validateRecord} from '../lib/validate-record.mjs';
+const day=(date,extra={})=>({id:'day:'+date,kind:'day',date,sleepModel:2,nightHours:7.5,nightWake:'08:00',napStatus:'none',napStart:'',napEnd:'',exercise:'无',...extra});
+const t=(date,time,extra={})=>({id:date+time,kind:'test',date,time,rt:160,activity:'无',...extra});
+let rows=[day('2026-10-28',{napStatus:'recorded',napStart:'13:00',napEnd:'13:30'})],resolve=S.resolver(rows);
+let c=resolve(t('2026-10-28','11:00'));assert.equal(c.nightHours,7.5);assert.equal(c.napState,'before');assert.equal(c.napMinutes,null);
+c=resolve(t('2026-10-28','13:15'));assert.equal(c.duringNap,true);assert.equal(c.napKnown,false);
+c=resolve(t('2026-10-28','14:00'));assert.equal(c.napMinutes,30);assert.equal(c.napGap,30);assert.equal(c.napState,'recent');
+c=resolve(t('2026-10-28','14:30'));assert.equal(c.napState,'after');assert.equal(c.napGap,60);
+c=S.resolver([day('2026-10-28')])(t('2026-10-28','16:00'));assert.equal(c.napState,'none','afternoon does not imply a nap');
+c=S.resolver([day('2026-10-28',{napStatus:'unknown'})])(t('2026-10-28','10:00'));assert.equal(c.napKnown,false);
+c=S.resolver([{id:'old',date:'2026-10-28',time:'10:00',rt:160,sleep:8,sleepType:'晚睡'}])(t('2026-10-28','10:00',{sleep:8}));assert.equal(c.nightKnown,false);assert.equal(c.legacy,true);
+c=S.resolver([day('2026-10-27',{nightHours:8}),day('2026-10-28',{nightHours:6})])(t('2026-10-28','01:00'));assert.equal(c.nightDate,'2026-10-27');assert.equal(c.nightHours,8,'do not use a future wake event');
+c=S.resolver([day('2026-10-25')])(t('2026-10-28','01:00'));assert.equal(c.nightKnown,false,'do not attach stale sleep');
+assert.throws(()=>validateRecord(day('2026-10-28',{napStatus:'recorded',napStart:'13:30',napEnd:'13:00'})));assert.throws(()=>validateRecord(day('2026-10-28',{napStatus:'recorded',napStart:'',napEnd:''})));assert.throws(()=>validateRecord(day('2026-10-28',{nightHours:30})));assert.equal(validateRecord(day('2026-10-28')).nightHours,7.5);
+console.log('PASS sleep timing: before/during/after nap, incomplete and legacy data, prior night at midnight, stale sleep and invalid intervals.');
