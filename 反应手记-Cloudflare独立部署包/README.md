@@ -68,3 +68,10 @@ npm.cmd run deploy
 ## 后续更新
 
 日常修改页面或脚本后，执行 npm.cmd run deploy 即可。不要重复创建数据库或重置认证密钥。数据库架构变更需要另行增加迁移。
+
+
+## Human Benchmark 成绩回填
+
+2026-10-30：活动时长移到常用活动下方，选活动后直接填写。桌面 Edge/Chrome 可加载 integrations/hb-helper 中的本地扩展；网页 /hb-helper-guide.html 提供安装说明，/hb-helper.zip 提供打包下载。只识别 Human Benchmark 当前最终平均成绩页，单次点击不回填；结果进入草稿，用户核对勾选后再手动保存。已有成绩先询问是否替换；切换账号、日期或编辑历史时隔离旧测试。扩展不会自动保存，也不读取账号密码。
+
+网页与扩展协议包含启动和接收确认；网页脚本、扩展及 ZIP 通过 npm run prepare 生成/打包。npm test 覆盖客户端和扩展。真实 Edge 的完整跨标签页流程在模拟最终结果页面上通过，实际 Human Benchmark 结构依据其公开页面脚本核查；如其结构改变应手动输入。

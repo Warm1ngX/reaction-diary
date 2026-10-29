@@ -11,7 +11,7 @@ function renderImmediateResult(){
  const previous=all.filter(a=>a.id!==r.id&&a.quality==='normal'&&a.source==='Human Benchmark'&&setup&&ReactionAnalysis.normalize(a.testSetup)===setup&&((a.date+a.time)<time||((a.date+a.time)===time&&a.recordedAt&&r.recordedAt&&a.recordedAt<r.recordedAt))).slice(-7);
  const center=ReactionStats.median(previous.map(a=>a.rt));let comparison;
  if(r.quality!=='normal'||r.source!=='Human Benchmark')comparison='本组标为'+({'practice':'熟悉 / 练习','interrupted':'被打断','device_issue':'设备异常','unknown':'情况未确认'}[r.quality]||'待确认')+'，先保留，不作表现优劣判断。';
- else if(!setup)comparison='测试配置尚未填写，暂不跨设备比较。可在“时间、活动时长与分析补充”中补充。';
+ else if(!setup)comparison='测试配置尚未填写，暂不跨设备比较。可在“时间与分析补充”中补充。';
  else if(previous.length<3)comparison='同配置可比历史 '+previous.length+' / 3 组，暂不比较。';
  else{const delta=r.rt-center;comparison='同配置此前 '+previous.length+' 组中位数 '+center.toFixed(1)+' ms；本组'+(Math.abs(delta)<.05?'与其接近':delta<0?'快 '+(-delta).toFixed(1)+' ms':'慢 '+delta.toFixed(1)+' ms')+'。仅作描述。'}
  $('immediateResult').innerHTML='<div class="result-number">'+r.rt+'<small>ms</small></div><p class="quiet">'+esc(r.date)+' '+esc(r.time)+'</p><p>'+esc(comparison)+'</p>';

@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "反应手记 · 成绩回填助手",
+  "description": "将从反应手记发起的 Human Benchmark 反应测试最终平均成绩带回待核实草稿，不自动保存。",
+  "version": "1.0.0",
+  "minimum_chrome_version": "102",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://reaction-diary.warm1ng.workers.dev/*",
+    "https://humanbenchmark.com/tests/reactiontime*"
+  ],
+  "background": {"service_worker": "background.js", "type": "module"},
+  "content_scripts": [
+    {"matches": ["https://reaction-diary.warm1ng.workers.dev/*"], "js": ["diary.js"], "run_at": "document_idle", "all_frames": false},
+    {"matches": ["https://humanbenchmark.com/tests/reactiontime*"], "js": ["detector.js", "humanbenchmark.js"], "run_at": "document_idle", "all_frames": false}
+  ]
+}

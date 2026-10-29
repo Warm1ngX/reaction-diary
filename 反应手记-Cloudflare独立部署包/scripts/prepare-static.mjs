@@ -6,3 +6,5 @@ for(const view of ['record','insights']){
  fs.writeFileSync('public/'+(view==='record'?'index':'insights')+'.html',html);
 }
 console.log('Prepared two standalone pages and shared client.');
+
+await import('./package-hb-helper.mjs');

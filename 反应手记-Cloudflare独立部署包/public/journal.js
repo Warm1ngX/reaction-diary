@@ -131,7 +131,7 @@ function renderImmediateResult(){
  const previous=all.filter(a=>a.id!==r.id&&a.quality==='normal'&&a.source==='Human Benchmark'&&setup&&ReactionAnalysis.normalize(a.testSetup)===setup&&((a.date+a.time)<time||((a.date+a.time)===time&&a.recordedAt&&r.recordedAt&&a.recordedAt<r.recordedAt))).slice(-7);
  const center=ReactionStats.median(previous.map(a=>a.rt));let comparison;
  if(r.quality!=='normal'||r.source!=='Human Benchmark')comparison='本组标为'+({'practice':'熟悉 / 练习','interrupted':'被打断','device_issue':'设备异常','unknown':'情况未确认'}[r.quality]||'待确认')+'，先保留，不作表现优劣判断。';
- else if(!setup)comparison='测试配置尚未填写，暂不跨设备比较。可在“时间、活动时长与分析补充”中补充。';
+ else if(!setup)comparison='测试配置尚未填写，暂不跨设备比较。可在“时间与分析补充”中补充。';
  else if(previous.length<3)comparison='同配置可比历史 '+previous.length+' / 3 组，暂不比较。';
  else{const delta=r.rt-center;comparison='同配置此前 '+previous.length+' 组中位数 '+center.toFixed(1)+' ms；本组'+(Math.abs(delta)<.05?'与其接近':delta<0?'快 '+(-delta).toFixed(1)+' ms':'慢 '+delta.toFixed(1)+' ms')+'。仅作描述。'}
  $('immediateResult').innerHTML='<div class="result-number">'+r.rt+'<small>ms</small></div><p class="quiet">'+esc(r.date)+' '+esc(r.time)+'</p><p>'+esc(comparison)+'</p>';
@@ -149,8 +149,8 @@ function renderHistory(rows){
 function openRecordDetails(r){const d=dailyValues(r),issues=recordWarnings(r);$('recordDetailTitle').textContent=r.date+' '+r.time+' · '+r.rt+' ms';$('recordDetailBody').innerHTML='<h3>测试前睡眠背景</h3><p>'+esc(d.context.label)+'</p><h3>本组情况</h3><p>配置：'+esc(r.testSetup||'未记录')+'<br>活动：'+esc(r.activity||'未记录')+'；时长：'+(r.duration==null?'未记录':r.duration+' min')+'<br>咖啡因：'+esc({none:'前 6 小时自报未摄入',yes:'前 6 小时自报摄入过',unknown:'未记录'}[r.caffeineWindow]||'未记录')+'<br>来源：'+esc(r.source||'未确认')+'</p>'+(issues.length?'<h3>待确认信息</h3><p>'+issues.map(esc).join('<br>')+'</p>':'')+'<h3>备注</h3><p>'+esc(r.notes||'无')+'</p>';$('recordDetailDialog').showModal()}
 function openRecordEditor(r){
  if(dailyDirty&&!confirm('编辑历史记录将切换日期，放弃尚未保存的当天情况？'))return;dailyDirty=false;$('date').value=r.date;activeDate=r.date;loadDay(true);editing=r.id;testTimeEdited=true;editBaseVersion=cloud?.entries.get(r.id)?.version??0;
- for(const k of ['time','rt','duration','meal','notes'])$(k).value=r[k]??'';state(r.state||'');activity(r.activity||'无');$('testSetup').value=r.testSetup||'';$('caffeineWindow').value=r.caffeineWindow||'unknown';$('quality').value=r.quality||'unknown';setupTouched=true;setupDefaultsNeeded=false;
- $('formtitle').textContent='编辑本次测试';$('save').textContent='保存修改';$('cancel').hidden=false;$('details').open=true;$('entry').scrollIntoView({behavior:'smooth',block:'start'});$('rt').focus({preventScroll:true});renderSleepContext();
+ for(const k of ['time','rt','duration','meal','notes'])$(k).value=r[k]??'';state(r.state||'');activity(r.activity||'无');$('duration').value=$('activity').value==='无'?'0':(r.duration??'');$('testSetup').value=r.testSetup||'';$('caffeineWindow').value=r.caffeineWindow||'unknown';$('quality').value=r.quality||'unknown';setupTouched=true;setupDefaultsNeeded=false;
+ $('formtitle').textContent='编辑本次测试';$('save').textContent='保存修改';$('cancel').hidden=false;$('details').open=true;$('entry').scrollIntoView({behavior:'smooth',block:'start'});$('rt').focus({preventScroll:true});renderSleepContext();renderHBBridge();
 }
 function onHistoryAction(e){const b=e.target.closest('button');if(!b)return;const id=b.dataset.detail||b.dataset.edit||b.dataset.delete,r=records.find(v=>v.id===id);if(!r)return;if(b.dataset.detail){openRecordDetails(r);return}if(b.dataset.delete){if(confirm('删除 '+r.date+' '+r.time+' 的 '+r.rt+' ms 记录？')&&commit(records.filter(v=>v.id!==id))){if(editing===id)resetForm();render();notify('记录已删除。')}return}if(currentJournalView()==='insights'){location.href='/?edit='+encodeURIComponent(r.id);return}openRecordEditor(r)}
 
@@ -187,6 +187,50 @@ function renderReview(){
  $('modelDiagnostics').innerHTML='<h3>本窗口数据检查</h3><p>'+esc(context||'尚无完整的同条件夜晚。')+'</p><p>异常或练习 '+c.qualityExcluded+' 组；本组情况待确认 '+c.legacyQuality+' 组；缺配置 '+c.missingSetup+' 组；缺咖啡因类别 '+c.missingCaffeine+' 组；睡眠时序或日期待确认 '+c.incompleteSleep+' 组；近期醒后 '+c.recentWake+' 组。以上计数可能重叠。</p>'+(report.model?'<p>线性日期趋势 '+signed(report.model.trend)+' ms/天；未加入日期趋势的睡眠系数 '+signed(report.model.unadjustedSlope)+' ms/h。改用每晚组均值平均：'+signed(report.sensitivity.alternateMeanSlope)+' ms/h；去掉最初 3 个可比夜晚：'+signed(report.sensitivity.withoutEarlySlope)+' ms/h。连续删块有效检查 '+report.sensitivity.checks+' 次，无法拟合 '+report.sensitivity.failed+' 次。</p>':'');
 }
 
+// This channel only fills an unpersisted draft. Persistence remains in the explicit form submit.
+const hbBridge={context:'',scope:null,launchId:null,connected:false,activeDraft:null,pending:null};
+function resetHBTransfer(){hbBridge.context='';hbBridge.scope=null;hbBridge.launchId=null;hbBridge.activeDraft=null;hbBridge.pending=null;const panel=$('hbDraftReview');if(panel)panel.hidden=true;if($('hbPending'))$('hbPending').hidden=true;if($('hbDraftConfirmed'))$('hbDraftConfirmed').checked=false;}
+function pingHBHelper(){if(hbBridge.context&&typeof window.postMessage==='function')window.postMessage({source:'reaction-diary',type:'ping',context:hbBridge.context},location.origin);}
+function renderHBBridge(){
+ const eligible=!journalBooting&&!editing&&currentJournalView()==='record'&&$('date').value===localDate();const scope=eligible?(cloud?.user.id||'local')+'|'+$('date').value:null;
+ if(scope!==hbBridge.scope||eligible&&!hbBridge.context){const previous=hbBridge.activeDraft;if(previous&&!editing&&Number($('rt').value)===previous.rt)$('rt').value='';resetHBTransfer();hbBridge.scope=scope;if(eligible)hbBridge.context=crypto.randomUUID();pingHBHelper();}
+ $('hbHelperStatus').dataset.context=hbBridge.context;
+ if(!eligible)$('hbHelperStatus').textContent=journalBooting?'正在检查账号，稍后可发起回填。':editing?'正在编辑历史记录；自动回填仅用于今天的新测试。':'自动回填用于今天的新测试。';
+ else if(hbBridge.launchId&&!hbBridge.activeDraft&&!hbBridge.pending)$('hbHelperStatus').textContent='正在等待本次 Human Benchmark 最终平均成绩…';
+ else $('hbHelperStatus').textContent=hbBridge.connected?'回填助手已连接 · 测试结束后填入待核实草稿。':'未连接回填助手，可直接手动填写。';
+}
+function validHBDraft(data){return data&&Number.isFinite(data.rt)&&data.rt>=1&&data.rt<=10000&&typeof data.capturedAt==='string'&&Number.isFinite(Date.parse(data.capturedAt))&&Date.now()-Date.parse(data.capturedAt)>=-120000&&Date.now()-Date.parse(data.capturedAt)<=1800000;}
+function applyHBDraft(data){
+ if(!validHBDraft(data)||editing||!hbBridge.context||data.context!==hbBridge.context)return false;
+ const captured=new Date(data.capturedAt);if(localDate(captured)!==$('date').value){notify('测试日期与当前记录日期不同，请切换日期后重新发起测试。');return false;}
+ $('rt').value=String(data.rt);$('time').value=String(captured.getHours()).padStart(2,'0')+':'+String(captured.getMinutes()).padStart(2,'0');testTimeEdited=true;
+ hbBridge.activeDraft={...data};hbBridge.pending=null;$('hbPending').hidden=true;$('hbDraftReview').hidden=false;$('hbDraftConfirmed').checked=false;
+ $('hbDraftSummary').textContent='最终平均 '+data.rt+' ms · '+$('date').value+' '+$('time').value+'。尚未保存，你可以修改。';$('save').textContent='核实后保存这次测试';renderSleepContext();$('rt').focus({preventScroll:true});notify('平均成绩已回填，核实后再保存。');return true;
+}
+function acknowledgeHB(type,data,accepted){if(typeof window.postMessage==='function')window.postMessage({source:'reaction-diary',type,context:data.context,launchId:data.launchId,accepted},location.origin);}
+function onHBMessage(event){
+ const data=event.data;if(event.source!==window||event.origin!==location.origin||!data||data.source!=='reaction-hb-helper'||!hbBridge.context||data.context!==hbBridge.context)return;
+ if(data.type==='ready'){hbBridge.connected=true;renderHBBridge();return;}
+ if(data.type==='started'&&typeof data.launchId==='string'&&data.launchId.length>=16){hbBridge.connected=true;hbBridge.launchId=data.launchId;renderHBBridge();acknowledgeHB('started-ack',data,true);return;}
+ if(data.type==='error'){if(data.launchId===hbBridge.launchId)hbBridge.launchId=null;renderHBBridge();notify(String(data.message||data.error||'回填未完成，可手动填写。').slice(0,180));return;}
+ if(data.type!=='result'||typeof data.launchId!=='string'||data.launchId!==hbBridge.launchId||!validHBDraft(data))return;
+ hbBridge.launchId=null;
+ if(editing){notify('正在编辑历史记录，未覆盖已有成绩。');acknowledgeHB('result-ack',data,false);return;}
+ if($('rt').value!==''){
+  hbBridge.pending={...data};$('hbPending').hidden=false;$('hbPendingText').textContent='收到最终平均 '+data.rt+' ms，当前已有成绩草稿。是否替换？尚未保存。';renderHBBridge();acknowledgeHB('result-ack',data,true);return;
+ }
+ const accepted=applyHBDraft(data);renderHBBridge();acknowledgeHB('result-ack',data,accepted);
+}
+function initializeHBBridge(){
+ window.addEventListener('message',onHBMessage);window.addEventListener('focus',pingHBHelper);
+ $('hbUsePending').onclick=()=>{if(hbBridge.pending)applyHBDraft(hbBridge.pending)};
+ $('hbIgnorePending').onclick=()=>{hbBridge.pending=null;$('hbPending').hidden=true;};
+ $('hbDiscardDraft').onclick=()=>{if(hbBridge.activeDraft)$('rt').value='';hbBridge.activeDraft=null;$('hbDraftReview').hidden=true;$('hbDraftConfirmed').checked=false;$('save').textContent=editing?'保存修改':'保存这次测试';};
+ $('rt').addEventListener('input',()=>{if(hbBridge.activeDraft){$('hbDraftConfirmed').checked=false;$('hbDraftSummary').textContent='草稿成绩已修改，请重新核对。尚未保存。';}});
+ $('time').addEventListener('input',()=>{if(hbBridge.activeDraft)$('hbDraftConfirmed').checked=false;});
+ renderHBBridge();pingHBHelper();
+}
+
 'use strict';
 const $=id=>document.getElementById(id),KEY='reaction-journal-v1';
 let records=[],editing=null,selectedState='',toastTimer,journalBooting=true,editBaseVersion=null,dailyBaseVersion=null;
@@ -215,7 +259,7 @@ function renderSleepContext(){try{let source=records;if(dailyDirty)source=withDa
 function commit(next){if(journalBooting){notify('正在检查账号状态，请稍候。');return false}if(storageFailed&&!cloud){notify('本机记录读取失败，请先导入备份恢复。');return false}return persistJournal(next)}
 function setChips(id,value){document.querySelectorAll('#'+id+' button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.value===value)))}
 function state(v){selectedState=v;setChips('state',v)}
-function activity(v){const common=['无','aim_rush','aim_botz','死斗','CS2对局','篮球'];$('activity').value=v||'无';const custom=!common.includes($('activity').value);setChips('activityChips',custom?'其他':$('activity').value);$('activityCustomField').hidden=!custom;$('activityCustom').value=custom&&v!=='其他'?v:'';$('durationField').hidden=$('activity').value==='无';if($('activity').value==='无')$('duration').value='0'}
+function activity(v){const previousActivity=$('activity').value;const common=['无','aim_rush','aim_botz','死斗','CS2对局','篮球'];$('activity').value=v||'无';const custom=!common.includes($('activity').value);setChips('activityChips',custom?'其他':$('activity').value);$('activityCustomField').hidden=!custom;$('activityCustom').value=custom&&v!=='其他'?v:'';$('durationField').hidden=$('activity').value==='无';if(previousActivity==='无'&&$('activity').value!=='无'&&$('duration').value==='0')$('duration').value='';if($('activity').value==='无')$('duration').value='0'}
 function loadDay(force=false){if(dailyDirty&&!force)return;const date=$('date').value,day=records.find(r=>r.kind==='day'&&r.date===date),legacy=tests().filter(r=>r.date===date).sort((a,b)=>a.time.localeCompare(b.time));
  const oldNight=[day,...[...legacy].reverse()].find(r=>r&&r.sleepType==='晚睡'&&r.sleep!=null);
  $('sleep').value=day?.sleepModel===2?(day.nightHours??''):(oldNight?.sleep??'');$('nightWake').value=day?.sleepModel===2?(day.nightWake||''):'';$('napStatus').value=day?.sleepModel===2?day.napStatus:'unknown';$('napStart').value=day?.sleepModel===2?(day.napStart||''):'';$('napEnd').value=day?.sleepModel===2?(day.napEnd||''):'';$('napFields').hidden=$('napStatus').value!=='recorded';
@@ -225,11 +269,11 @@ function loadDay(force=false){if(dailyDirty&&!force)return;const date=$('date').
 function dayDraft(){const prior=records.find(r=>r.id==='day:'+$('date').value),status=$('napStatus').value;const day={...prior,id:'day:'+$('date').value,kind:'day',date:$('date').value,sleepModel:2,nightHours:$('sleep').value===''?null:Number($('sleep').value),nightWake:$('nightWake').value,napStatus:status,napStart:status==='recorded'?$('napStart').value:'',napEnd:status==='recorded'?$('napEnd').value:'',exercise:$('exercise').value,updatedAt:new Date().toISOString()};validateRecord(day);return day}
 
 function withDay(next,day){return [...next.filter(r=>r.id!==day.id),day]}
-function resetForm(){editing=null;editBaseVersion=null;$('rt').value='';$('time').value=localTime();testTimeEdited=false;$('meal').value='';$('notes').value='';$('formtitle').textContent='本次测试';$('save').textContent='保存这次测试';$('cancel').hidden=true;$('details').open=false;$('caffeineWindow').value='unknown';$('quality').value='normal';$('testSetup').value='';setupTouched=false;setupDefaultsNeeded=true;}
+function resetForm(){resetHBTransfer();editing=null;editBaseVersion=null;$('rt').value='';$('time').value=localTime();testTimeEdited=false;$('meal').value='';$('notes').value='';$('formtitle').textContent='本次测试';$('save').textContent='保存这次测试';$('cancel').hidden=true;$('details').open=false;$('caffeineWindow').value='unknown';$('quality').value='normal';$('testSetup').value='';setupTouched=false;setupDefaultsNeeded=true;}
 function visible(){let rows=tests().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));if($('range').value!=='all'){const cutoff=new Date();cutoff.setDate(cutoff.getDate()-Number($('range').value)+1);rows=rows.filter(r=>r.date>=localDate(cutoff)&&r.date<=localDate())}return rows}
 function render(){resolveSleep=ReactionSleep.resolver(records);const rows=visible(),values=rows.map(r=>r.rt);$('count').innerHTML=rows.length+'<small>组</small>';$('average').innerHTML=rows.length?(values.reduce((a,b)=>a+b,0)/rows.length).toFixed(1)+'<small>ms</small>':'—';$('recent').innerHTML=rows.length>=7?(values.slice(-7).reduce((a,b)=>a+b,0)/7).toFixed(1)+'<small>ms</small>':'—<small class="remaining">还差 '+(7-rows.length)+' 组</small>';$('best').innerHTML=rows.length?Math.min(...values)+'<small>ms</small>':'—';drawChart(rows);
  const descriptors=rows.filter(r=>!ReactionAnalysis.badQuality(r));comparison('groups',descriptors,r=>r.state,['清醒','一般','困倦']);comparison('sleepGroups',descriptors,r=>{const v=dailyValues(r).sleep;return v==null?null:v<7?'少于 7 h':v<9?'7 至不足 9 h':'9 h 及以上'},['少于 7 h','7 至不足 9 h','9 h 及以上']);comparison('napGroups',descriptors,r=>{const c=sleepContext(r);return !c.napKnown||c.duringNap?null:c.napState==='recent'?'午睡醒后不足 1 小时':c.napState==='after'?'午睡醒后至少 1 小时':'测试前无已完成午睡'},['测试前无已完成午睡','午睡醒后不足 1 小时','午睡醒后至少 1 小时']);$('sleepCoverage').textContent=descriptors.filter(r=>sleepContext(r).nightKnown).length+' 组描述记录能关联主睡眠。';comparison('activityGroups',descriptors,r=>r.activity);
- renderHistory(rows);loadDay();loadTestDefaults();renderSleepContext();updateBackupUI();renderImmediateResult();renderInsightInvitation();updateDailySummary();renderReview();consumeRequestedEdit();
+ renderHistory(rows);loadDay();loadTestDefaults();renderSleepContext();updateBackupUI();renderImmediateResult();renderInsightInvitation();updateDailySummary();renderReview();renderHBBridge();consumeRequestedEdit();
 }
 const backupKey=()=> 'reaction-backup-v1:'+(cloud?.user.id||'local');
 function recordFingerprint(r){const s=JSON.stringify(r);let n=2166136261;for(let i=0;i<s.length;i++)n=Math.imul(n^s.charCodeAt(i),16777619);return (n>>>0).toString(16)}
@@ -245,10 +289,10 @@ $('state').onclick=e=>{const b=e.target.closest('button');if(b)state(selectedSta
 $('activityChips').onclick=e=>{const b=e.target.closest('button');if(b){activity(b.dataset.value);if(b.dataset.value==='其他')$('activityCustom').focus({preventScroll:true})}};$('activityCustom').oninput=()=>{$('activity').value=$('activityCustom').value||'其他'};
 function dirtyDay(){dailyDirty=true;$('dayStatus').textContent='未保存';renderSleepContext();updateDailySummary()}
 $('sleep').oninput=dirtyDay;$('nightWake').oninput=dirtyDay;$('napStart').oninput=dirtyDay;$('napEnd').oninput=dirtyDay;$('napStatus').onchange=()=>{$('napFields').hidden=$('napStatus').value!=='recorded';if($('napStatus').value!=='recorded'){$('napStart').value='';$('napEnd').value=''}dirtyDay()};$('time').oninput=()=>{testTimeEdited=true;renderSleepContext()};$('exerciseChips').onclick=e=>{const b=e.target.closest('button');if(b){$('exercise').value=$('exercise').value===b.dataset.value?'':b.dataset.value;setChips('exerciseChips',$('exercise').value);dirtyDay()}};
-$('date').onchange=()=>{if(dailyDirty&&!confirm('当天情况尚未保存，切换日期会放弃这次填写。继续？')){$('date').value=activeDate;return}activeDate=$('date').value;dailyDirty=false;resetForm();loadDay(true);updateDailySummary()};
+$('date').onchange=()=>{if(dailyDirty&&!confirm('当天情况尚未保存，切换日期会放弃这次填写。继续？')){$('date').value=activeDate;return}activeDate=$('date').value;dailyDirty=false;resetForm();loadDay(true);updateDailySummary();renderHBBridge()};
 $('dailyForm').onsubmit=e=>{e.preventDefault();try{const day=dayDraft();if(commit(withDay(records,day))){dailyDirty=false;render();loadDay(true);notify('当天情况已保存。')}}catch(e){notify(e.message)}};
-$('entry').onsubmit=e=>{e.preventDefault();try{if(!$('date').value)throw Error('请选择记录日期。');const original=editing?records.find(r=>r.id===editing):null;const r={...original,id:editing||crypto.randomUUID(),kind:'test',date:$('date').value,time:editing||testTimeEdited?$('time').value:localTime(),rt:Number($('rt').value),state:selectedState,activity:$('activity').value||'无',duration:$('activity').value==='无'?0:$('duration').value===''?null:Number($('duration').value),meal:$('meal').value,notes:$('notes').value,source:original?.source||'Human Benchmark',testSetup:$('testSetup').value.trim(),caffeineWindow:$('caffeineWindow').value,quality:$('quality').value,recordedAt:original?.recordedAt||(!editing?new Date().toISOString():undefined),updatedAt:new Date().toISOString()};validateRecord(r);if(editing)r.dateInferred=false;let next=editing?records.map(a=>a.id===editing?r:a):[...records,r];if(dailyDirty)next=withDay(next,dayDraft());if(commit(next)){if(!editing){try{localStorage.setItem('reaction-setup-v1:'+(cloud?.user.id||'local'),$('testSetup').value.trim())}catch{}}lastResultId=r.id;dailyDirty=false;resetForm();render();loadDay(true);notify(cloud?'已保存 · 正在同步':'已保存到本机');$('rt').focus({preventScroll:true})}}catch(e){notify(e.message)}};
-$('cancel').onclick=()=>{resetForm();loadDay()};$('range').onchange=render;$('chartMode').onchange=render;
+$('entry').onsubmit=e=>{e.preventDefault();try{if(hbBridge.activeDraft&&!$('hbDraftConfirmed').checked)throw Error('请先核对回填成绩与测试时间，并勾选确认。');if(!$('date').value)throw Error('请选择记录日期。');const original=editing?records.find(r=>r.id===editing):null;const r={...original,id:editing||crypto.randomUUID(),kind:'test',date:$('date').value,time:editing||testTimeEdited?$('time').value:localTime(),rt:Number($('rt').value),state:selectedState,activity:$('activity').value||'无',duration:$('activity').value==='无'?0:$('duration').value===''?null:Number($('duration').value),meal:$('meal').value,notes:$('notes').value,source:original?.source||'Human Benchmark',testSetup:$('testSetup').value.trim(),caffeineWindow:$('caffeineWindow').value,quality:$('quality').value,recordedAt:original?.recordedAt||(!editing?new Date().toISOString():undefined),updatedAt:new Date().toISOString()};validateRecord(r);if(editing)r.dateInferred=false;let next=editing?records.map(a=>a.id===editing?r:a):[...records,r];if(dailyDirty)next=withDay(next,dayDraft());if(commit(next)){if(!editing){try{localStorage.setItem('reaction-setup-v1:'+(cloud?.user.id||'local'),$('testSetup').value.trim())}catch{}}lastResultId=r.id;dailyDirty=false;resetForm();render();loadDay(true);notify(cloud?'已保存 · 正在同步':'已保存到本机');$('rt').focus({preventScroll:true})}}catch(e){notify(e.message)}};
+$('cancel').onclick=()=>{resetForm();loadDay();renderHBBridge()};$('range').onchange=render;$('chartMode').onchange=render;
 $('history').onclick=onHistoryAction;
 $('import').onclick=()=>$('importFile').click();$('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(f.size>10*1024*1024)throw Error('请选择 10MB 以下的 JSON 备份。');const data=JSON.parse((await f.text()).replace(/^\ufeff/,''));if(![1,2].includes(data.version)||!Array.isArray(data.records)||data.records.length>20000)throw Error('备份格式无效');data.records.forEach(validateRecord);const map=new Map(records.map(r=>[r.id,r]));let n=0;for(const r of data.records)if(!map.has(r.id)){map.set(r.id,r);n++}const failed=storageFailed;storageFailed=false;if(commit([...map.values()])){dailyDirty=false;render();loadDay(true);notify('已导入 '+n+' 条；相同 ID 保留当前版本。')}else storageFailed=failed}catch(e){notify('导入失败：'+e.message)}finally{$('importFile').value=''}};
 function showAccount(){const own=cloud?.user.kind==='password';$('authForms').hidden=own;$('accountManage').hidden=!own;$('accountTitle').textContent=own?'账号与数据':'登录你的反应手记';$('accountIdentity').textContent=own?cloud.user.name:'';$('authMessage').textContent='';$('accountDialog').showModal()}
@@ -266,7 +310,7 @@ window.addEventListener('focus',()=>{if(!editing&&!testTimeEdited){$('time').val
 $('testSetup').oninput=()=>{setupTouched=true;setupDefaultsNeeded=false};$('completeDay').onclick=openDailyAccordion;$('recordDetailClose').onclick=()=>$('recordDetailDialog').close();
 const jump=document.querySelector?.('.help-jump');if(jump)jump.onclick=()=>{$('analysisHelp').open=true};
 try{const saved=localStorage.getItem(KEY);if(saved){const data=JSON.parse(saved);if(![1,2].includes(data.version)||!Array.isArray(data.records))throw Error('格式错误');data.records.forEach(validateRecord);records=data.records}}catch{storageFailed=true;notify('本机记录读取失败，请勿清理数据，可导入备份恢复。')}
-localRecords=[...records];$('date').value=localDate();activeDate=$('date').value;activity('无');resetForm();render();
+localRecords=[...records];$('date').value=localDate();activeDate=$('date').value;activity('无');resetForm();render();initializeHBBridge();
 
 
 // Cloud state is scoped to the authenticated account. The original local key remains intact.

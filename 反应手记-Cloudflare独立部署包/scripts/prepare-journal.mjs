@@ -14,7 +14,7 @@ export function getJournalMarkup(view: JournalView) {
 }
 `);
 const modules=['lib/sleep-insights.mjs','lib/analysis/statistics.mjs','lib/analysis/reaction-review.mjs'].map(p=>read(p).replace(/^import .*;\r?\n/gm,'').replace('export const ','const ').replace(/\bSleep\b/g,'ReactionSleep').replace(/\bStats\b/g,'ReactionStats'));
-const controllers=['client/views/record.js','client/views/history.js','client/views/insights.js','client/journal.js','client/core/sync.js'].map(read);
+const controllers=['client/views/record.js','client/views/history.js','client/views/insights.js','client/views/hb-draft.js','client/journal.js','client/core/sync.js'].map(read);
 fs.writeFileSync(path.join(root,'public/journal.js'),modules.concat(controllers).join('\n'));
 console.log('Prepared shared markup, two routes, evidence references and journal client.');
 
